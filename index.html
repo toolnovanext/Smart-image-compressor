@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Image Compressor</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    .container {
+      max-width: 750px;
+      margin: 40px auto;
+      padding: 20px;
+      background: white;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      border-radius: 12px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.2em;
+      margin-bottom: 20px;
+      color: #1a73e8;
+    }
+
+    .welcome {
+      background-color: #e8f0fe;
+      padding: 15px;
+      border-left: 5px solid #1a73e8;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .features {
+      background-color: #f1f8e9;
+      padding: 15px;
+      border-left: 5px solid #66bb6a;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin: 10px 0;
+    }
+
+    input[type="checkbox"] {
+      margin: 10px 5px;
+    }
+
+    button, a {
+      margin: 10px auto;
+      display: inline-block;
+      padding: 12px 24px;
+      font-size: 1.1em;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.3s;
+    }
+
+    #compressBtn {
+      background-color: #388e3c;
+      color: white;
+    }
+
+    #compressBtn:hover {
+      background-color: #2e7d32;
+    }
+
+    #downloadBtn {
+      background-color: #1976d2;
+      color: white;
+      display: none;
+    }
+
+    #downloadBtn:hover {
+      background-color: #0d47a1;
+    }
+
+    #fileSize, #reduction {
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    .image-preview {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 20px;
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Smart Image Compressor</h1>
+
+    <div class="welcome">
+      <p>Welcome from <strong>S M Ripon</strong> and our team <strong>Accessible Resource</strong>. We hope this tool helps you manage your images more efficiently and easily.</p>
+    </div>
+
+    <div class="features">
+      <p>This app allows you to select one or multiple images, view their sizes, estimate the compressed size, compress the images, and download them all in one go.</p>
+    </div>
+
+    <div class="form-group">
+      <input type="checkbox" id="multiUploadCheckbox">
+      <label for="multiUploadCheckbox">Upload Multiple Photos</label>
+    </div>
+
+    <div class="form-group">
+      <input type="file" id="imageInput" accept="image/*" multiple/>
+    </div>
+
+    <div id="fileSize"></div>
+    <div id="reduction"></div>
+
+    <div class="form-group">
+      <button id="compressBtn">Compress Images</button>
+      <div id="downloadBtns"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const multiUploadCheckbox = document.getElementById('multiUploadCheckbox');
+    const fileSizeDisplay = document.getElementById('fileSize');
+    const reductionDisplay = document.getElementById('reduction');
+    const compressBtn = document.getElementById('compressBtn');
+    const downloadBtnsContainer = document.getElementById('downloadBtns');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let originalImages = [];
+    let originalFileSizes = [];
+
+    imageInput.addEventListener('change', (e) => {
+      originalImages = [];
+      originalFileSizes = [];
+      downloadBtnsContainer.innerHTML = ''; // Reset download buttons
+      const files = e.target.files;
+      
+      if (files.length === 0) return;
+      
+      let totalSize = 0;
+      Array.from(files).forEach((file, index) => {
+        if (!file.type.startsWith('image/')) return;
+        
+        originalFileSizes.push(file.size);
+        totalSize += file.size;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            originalImages.push(img);
+          };
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      fileSizeDisplay.textContent = `Total Selected Size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`;
+    });
+
+    compressBtn.addEventListener('click', () => {
+      if (originalImages.length === 0) {
+        alert("Please select at least one image.");
+        return;
+      }
+
+      downloadBtnsContainer.innerHTML = ''; // Reset previous buttons
+      reductionDisplay.textContent = '';
+
+      originalImages.forEach((image, index) => {
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
+
+        const quality = 0.6;
+        const compressedDataUrl = canvas.toDataURL('image/png', quality);
+
+        const compressedSize = Math.ceil((compressedDataUrl.length * 3) / 4);
+        const percentReduction = 100 - (compressedSize / originalFileSizes[index]) * 100;
+
+        reductionDisplay.textContent += `Image ${index + 1}: Estimated compressed size: ${(compressedSize / 1024 / 1024).toFixed(2)} MB (${percentReduction.toFixed(1)}% smaller)\n`;
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = compressedDataUrl;
+        downloadLink.download = `compressed-image-${index + 1}.png`;
+        downloadLink.textContent = `Download Image ${index + 1}`;
+        downloadBtnsContainer.appendChild(downloadLink);
+        downloadBtnsContainer.appendChild(document.createElement('br'));
+      });
+    });
+  </script>
+
+</body>
+</html>
